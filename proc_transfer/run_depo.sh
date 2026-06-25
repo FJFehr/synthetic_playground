@@ -50,6 +50,7 @@ WANDB_ENTITY=fjfehr python plotting/depo_depth_test.py \
   --seed        $SEED \
   $EXTRA \
   --report_to   wandb \
+  --wandb_project depo \
   --out_json    "$OUT_DIR/depo_${TAG}.json"
 
 echo "Done. Results in $OUT_DIR/depo_${TAG}.json"
