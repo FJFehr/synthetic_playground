@@ -50,6 +50,7 @@ WANDB_ENTITY=fjfehr python -m downstream.synthetic_playground.brevo.brevo_train 
   --results_csv  "$OUT_DIR/brevo_results.csv" \
   --report_to    wandb \
   --wandb_project "$PROJECT" \
-  --wandb_name   "brevo_${TAG}"
+  --wandb_name   "brevo_${TAG}" \
+  --model_name   "$MODE"
 
 echo "Done. Results appended to $OUT_DIR/brevo_results.csv"

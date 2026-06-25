@@ -115,12 +115,15 @@ def main(difficulty: str = "easy", n_eval: int = 500, n_embd: int = 512,
          pretrained_path: str = None, transfer: str = "attn,ffn,ln",
          shuffle_weights: bool = False, shuffle_seed: int = 42,
          vocab_n: int = None, train_max_n: int = None, results_csv: str = None,
-         report_to: str = "none", wandb_project: str = "brevo", wandb_name: str = None):
+         report_to: str = "none", wandb_project: str = "brevo", wandb_name: str = None,
+         model_name: str = "scratch"):
     set_seed(seed)
     if report_to == "wandb":
+        import wandb
         os.environ["WANDB_PROJECT"] = wandb_project
         if wandb_name:
             os.environ["WANDB_NAME"] = wandb_name
+        wandb.init(config={"task": "brevo", "model": model_name, "seed": seed})
 
     params = dict(DIFFICULTY[difficulty])
     if vocab_n:                         # widen vocab/label space (reserve sizes for OOD eval)

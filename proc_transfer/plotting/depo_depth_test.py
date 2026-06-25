@@ -21,7 +21,7 @@ import json  # noqa: E402
 import os  # noqa: E402
 import random  # noqa: E402
 
-import fire  # noqa: E402
+uv syncimport fire  # noqa: E402
 import torch  # noqa: E402
 from datasets import Dataset  # noqa: E402
 from torch.utils.data import IterableDataset  # noqa: E402
@@ -59,8 +59,8 @@ def main(tag: str, max_hops: int = 5, num_entities: int = 8, num_queries: int = 
          n_layer: int = 4, n_head: int = 4, n_embd: int = 512,
          pretrained_path: str = None, transfer: str = "attn,ffn,ln",
          shuffle_weights: bool = False, shuffle_seed: int = 42,
-         report_to: str = "none", wandb_project: str = "depo-depth-v2-1kwarmup-again", wandb_name: str = None,
-         out_json: str = None):
+         report_to: str = "none", wandb_project: str = "depo", wandb_name: str = None,
+         out_json: str = None, model_name: str = "scratch"):
     set_seed(seed)
     # Start from the 'hard' preset, widen the chain to support max_hops dereferences.
     params = dict(DIFFICULTY["hard"])
@@ -98,8 +98,10 @@ def main(tag: str, max_hops: int = 5, num_entities: int = 8, num_queries: int = 
           f"params={sum(p.numel() for p in model.parameters())/1e6:.1f}M")
 
     if report_to == "wandb":
+        import wandb
         os.environ["WANDB_PROJECT"] = wandb_project
         os.environ["WANDB_NAME"] = wandb_name or tag
+        wandb.init(config={"task": "depo", "model": model_name, "seed": seed})
 
     args = TrainingArguments(
         output_dir=f"output/depo_depth/{tag}",
