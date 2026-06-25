@@ -15,10 +15,6 @@ import torch
 from torch.nn import Module
 from transformers import GPT2Config, GPT2LMHeadModel
 
-from downstream.shuffle_weights_utils import (
-    shuffle_all_non_embedding_weights,
-    shuffle_attention_weights,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -489,8 +485,10 @@ def initialize_model(
             "shuffle_attn_only and shuffle_all_weights cannot both be True; choose one."
         )
     if shuffle_attn_only:
+        from downstream.shuffle_weights_utils import shuffle_attention_weights
         shuffle_attention_weights(model, seed=shuffle_seed)
     elif shuffle_all_weights:
+        from downstream.shuffle_weights_utils import shuffle_all_non_embedding_weights
         shuffle_all_non_embedding_weights(model, seed=shuffle_seed)
 
     trainable_count, frozen_count = set_trainable_components(model, weights_to_train)
