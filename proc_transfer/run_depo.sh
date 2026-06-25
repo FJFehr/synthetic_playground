@@ -2,14 +2,16 @@
 # Run DEPO multi-hop dereference probe.
 #
 # Usage:
-#   bash run_depo.sh scratch                    # random init baseline
-#   bash run_depo.sh stack /path/to/ckpt.pth    # pretrained init
+#   bash run_depo.sh scratch                           # random init baseline
+#   bash run_depo.sh stack /path/to/ckpt.pth          # pretrained init
+#   bash run_depo.sh stack /path/to/ckpt.pth <seed>   # with explicit seed
 
 set -euo pipefail
 cd "$(dirname "$0")"
 
 MODE="${1:-scratch}"
 CKPT="${2:-}"
+SEED="${3:-0}"
 
 # ---------- edit these paths ----------
 SORT_CKPT=""   # e.g. pretrained_models/procedural/4_4_512/10ksteps.../sort/seed0/.../pytorch_model.pth
@@ -24,7 +26,7 @@ if [ -z "$CKPT" ] && [ "$MODE" != "scratch" ]; then
   exit 1
 fi
 
-TAG="${MODE}"
+TAG="${MODE}_seed${SEED}"
 EXTRA=""
 if [ -n "$CKPT" ]; then
   EXTRA="--pretrained_path $CKPT --transfer attn,ffn,ln"
@@ -40,7 +42,7 @@ WANDB_ENTITY=fjfehr python plotting/depo_depth_test.py \
   --n_eval      500 \
   --bsz         128 \
   --lr          5e-4 \
-  --seed        0 \
+  --seed        $SEED \
   $EXTRA \
   --report_to   wandb \
   --out_json    "$OUT_DIR/depo_${TAG}.json"

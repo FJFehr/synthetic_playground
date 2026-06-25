@@ -5,14 +5,16 @@
 # OOD eval graphs n in [31,40]. 10k training steps.
 #
 # Usage:
-#   bash run_brevo.sh scratch                   # random init baseline
-#   bash run_brevo.sh sort /path/to/ckpt.pth    # pretrained from sort task
+#   bash run_brevo.sh scratch                          # random init baseline
+#   bash run_brevo.sh sort /path/to/ckpt.pth          # pretrained from sort task
+#   bash run_brevo.sh sort /path/to/ckpt.pth <seed>   # with explicit seed
 
 set -euo pipefail
 cd "$(dirname "$0")"
 
 MODE="${1:-scratch}"
 CKPT="${2:-}"
+SEED="${3:-0}"
 
 OUT_DIR="results/brevo"
 mkdir -p "$OUT_DIR"
@@ -23,7 +25,7 @@ if [ -z "$CKPT" ] && [ "$MODE" != "scratch" ]; then
   exit 1
 fi
 
-TAG="${MODE}"
+TAG="${MODE}_seed${SEED}"
 EXTRA=""
 if [ -n "$CKPT" ]; then
   EXTRA="--pretrained_path $CKPT --transfer attn,ffn,ln"
@@ -37,7 +39,7 @@ WANDB_ENTITY=fjfehr python -m downstream.synthetic_playground.brevo.brevo_train 
   --eval_steps   1000 \
   --bsz          128 \
   --lr           5e-4 \
-  --seed         0 \
+  --seed         $SEED \
   $EXTRA \
   --results_csv  "$OUT_DIR/brevo_results.csv" \
   --report_to    wandb \
