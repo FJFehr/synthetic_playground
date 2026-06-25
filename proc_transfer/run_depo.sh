@@ -30,7 +30,7 @@ if [ -n "$CKPT" ]; then
   EXTRA="--pretrained_path $CKPT --transfer attn,ffn,ln"
 fi
 
-python plotting/depo_depth_test.py \
+WANDB_ENTITY=fjfehr python plotting/depo_depth_test.py \
   --tag         "$TAG" \
   --max_hops    4 \
   --num_entities 10 \
@@ -42,6 +42,7 @@ python plotting/depo_depth_test.py \
   --lr          5e-4 \
   --seed        0 \
   $EXTRA \
+  --report_to   wandb \
   --out_json    "$OUT_DIR/depo_${TAG}.json"
 
 echo "Done. Results in $OUT_DIR/depo_${TAG}.json"

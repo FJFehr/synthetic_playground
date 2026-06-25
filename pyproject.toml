@@ -10,6 +10,7 @@ dependencies = [
     "matplotlib",
     "fire",
     "accelerate>=1.1.0",
+    "wandb",
 ]
 
 [tool.uv.sources]

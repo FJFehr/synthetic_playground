@@ -29,7 +29,7 @@ if [ -n "$CKPT" ]; then
   EXTRA="--pretrained_path $CKPT --transfer attn,ffn,ln"
 fi
 
-python -m downstream.synthetic_playground.brevo.brevo_train \
+WANDB_ENTITY=fjfehr python -m downstream.synthetic_playground.brevo.brevo_train \
   --difficulty   very_hard \
   --vocab_n      40 \
   --train_max_n  30 \
@@ -40,6 +40,7 @@ python -m downstream.synthetic_playground.brevo.brevo_train \
   --seed         0 \
   $EXTRA \
   --results_csv  "$OUT_DIR/brevo_results.csv" \
+  --report_to    wandb \
   --wandb_name   "brevo_${TAG}"
 
 echo "Done. Results appended to $OUT_DIR/brevo_results.csv"
