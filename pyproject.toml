@@ -9,6 +9,7 @@ dependencies = [
     "numpy",
     "matplotlib",
     "fire",
+    "accelerate>=1.1.0",
 ]
 
 [tool.uv.sources]
