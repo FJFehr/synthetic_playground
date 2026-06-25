@@ -21,7 +21,7 @@ import json  # noqa: E402
 import os  # noqa: E402
 import random  # noqa: E402
 
-uv syncimport fire  # noqa: E402
+import fire  # noqa: E402
 import torch  # noqa: E402
 from datasets import Dataset  # noqa: E402
 from torch.utils.data import IterableDataset  # noqa: E402
