@@ -51,8 +51,8 @@ Two pretrained checkpoints ship with the repo (excluded from git — see [Cluste
 
 | File | Steps | Notes |
 |------|-------|-------|
-| `pytorch_model_1_step2500.pth` | 2 500 | early checkpoint |
-| `pytorch_model_1_step10000.pth` | 10 000 | later checkpoint |
+| `sort_step10000.pth` | 10 000 | pretrained on sort task |
+| `stack_step10000.pth` | 10 000 | pretrained on stack task |
 
 Model architecture: GPT-2, 4 layers, 4 heads, d=512.
 
@@ -134,7 +134,7 @@ cd synthetic_playground
 uv sync
 
 # 3. Transfer checkpoints from your local machine
-rsync -avz -e ssh pytorch_model_1_step*.pth torrnode11.priv:/homes/55/fabiojfehr/synthetic_playground/
+rsync -avz -e ssh sort_step10000.pth stack_step10000.pth torrnode11.priv:/homes/55/fabiojfehr/synthetic_playground/
 
 # 4. Run (from cluster, inside proc_transfer/)
 cd proc_transfer

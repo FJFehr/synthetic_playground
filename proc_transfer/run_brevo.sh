@@ -20,6 +20,7 @@ VENV="$(pwd)/../.venv"
 MODE="${1:-scratch}"
 CKPT="${2:-}"
 SEED="${3:-0}"
+PROJECT="${4:-synthetic_playground}"
 
 OUT_DIR="results/brevo"
 mkdir -p "$OUT_DIR"
@@ -48,6 +49,7 @@ WANDB_ENTITY=fjfehr python -m downstream.synthetic_playground.brevo.brevo_train 
   $EXTRA \
   --results_csv  "$OUT_DIR/brevo_results.csv" \
   --report_to    wandb \
+  --wandb_project "$PROJECT" \
   --wandb_name   "brevo_${TAG}"
 
 echo "Done. Results appended to $OUT_DIR/brevo_results.csv"

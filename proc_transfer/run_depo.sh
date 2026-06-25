@@ -17,6 +17,7 @@ VENV="$(pwd)/../.venv"
 MODE="${1:-scratch}"
 CKPT="${2:-}"
 SEED="${3:-0}"
+PROJECT="${4:-synthetic_playground}"
 
 # ---------- edit these paths ----------
 SORT_CKPT=""   # e.g. pretrained_models/procedural/4_4_512/10ksteps.../sort/seed0/.../pytorch_model.pth
@@ -50,7 +51,7 @@ WANDB_ENTITY=fjfehr python plotting/depo_depth_test.py \
   --seed        $SEED \
   $EXTRA \
   --report_to   wandb \
-  --wandb_project depo \
+  --wandb_project "$PROJECT" \
   --out_json    "$OUT_DIR/depo_${TAG}.json"
 
 echo "Done. Results in $OUT_DIR/depo_${TAG}.json"
