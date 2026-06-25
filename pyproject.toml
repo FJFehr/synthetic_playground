@@ -10,3 +10,11 @@ dependencies = [
     "matplotlib",
     "fire",
 ]
+
+[[tool.uv.indexes]]
+name = "pytorch-cu121"
+url = "https://download.pytorch.org/whl/cu121"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu121" }
