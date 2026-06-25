@@ -13,8 +13,6 @@ mkdir -p logs
 CKPT2500="../pytorch_model_1_step2500.pth"
 CKPT10000="../pytorch_model_1_step10000.pth"
 
-export WANDB_DISABLE_SERVICE=1
-
 echo "Launching 8 runs across GPUs 0-7..."
 
 # BREVO — step2500
