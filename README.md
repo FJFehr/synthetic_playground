@@ -127,7 +127,7 @@ The gap between ID and OOD accuracy is the main quantity of interest.
 
 ```bash
 # 1. Clone
-git clone git@github.com:fabiofehr96/synthetic_playground.git
+git clone git@github.com:FJFehr/synthetic_playground.git
 cd synthetic_playground
 
 # 2. Install dependencies (uv)
