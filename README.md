@@ -134,7 +134,7 @@ cd synthetic_playground
 uv sync
 
 # 3. Transfer checkpoints from your local machine
-rsync -avz pytorch_model_1_step*.pth user@cluster:/path/to/synthetic_playground/
+rsync -avz -e ssh pytorch_model_1_step*.pth torrnode11.priv:/homes/55/fabiojfehr/synthetic_playground/
 
 # 4. Run (from cluster, inside proc_transfer/)
 cd proc_transfer
