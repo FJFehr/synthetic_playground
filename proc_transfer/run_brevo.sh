@@ -12,6 +12,11 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
+# Activate venv (needed when script is launched as a background subprocess)
+VENV="$(pwd)/../.venv"
+# shellcheck disable=SC1091
+[ -f "$VENV/bin/activate" ] && source "$VENV/bin/activate"
+
 MODE="${1:-scratch}"
 CKPT="${2:-}"
 SEED="${3:-0}"
