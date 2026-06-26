@@ -8,6 +8,7 @@
 #   bash run_brevo.sh scratch                          # random init baseline
 #   bash run_brevo.sh sort /path/to/ckpt.pth          # pretrained from sort task
 #   bash run_brevo.sh sort /path/to/ckpt.pth <seed>   # with explicit seed
+#   bash run_brevo.sh sort /path/to/ckpt.pth <seed> <project> <wandb_run_name>
 
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -21,6 +22,7 @@ MODE="${1:-scratch}"
 CKPT="${2:-}"
 SEED="${3:-0}"
 PROJECT="${4:-synthetic_playground}"
+WANDB_RUN_NAME="${5:-}"
 
 OUT_DIR="results/brevo"
 mkdir -p "$OUT_DIR"
@@ -32,6 +34,9 @@ if [ -z "$CKPT" ] && [ "$MODE" != "scratch" ]; then
 fi
 
 TAG="${MODE}_seed${SEED}"
+if [ -z "$WANDB_RUN_NAME" ]; then
+  WANDB_RUN_NAME="brevo_${TAG}"
+fi
 EXTRA=""
 if [ -n "$CKPT" ]; then
   EXTRA="--pretrained_path $CKPT --transfer attn,ffn,ln"
@@ -50,7 +55,7 @@ WANDB_ENTITY=fjfehr python -m downstream.synthetic_playground.brevo.brevo_train 
   --results_csv  "$OUT_DIR/brevo_results.csv" \
   --report_to    wandb \
   --wandb_project "$PROJECT" \
-  --wandb_name   "brevo_${TAG}" \
+  --wandb_name   "$WANDB_RUN_NAME" \
   --model_name   "$MODE"
 
 echo "Done. Results appended to $OUT_DIR/brevo_results.csv"

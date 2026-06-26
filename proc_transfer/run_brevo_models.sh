@@ -1,9 +1,8 @@
 #!/bin/bash
-# Launch the new models-folder BREVO experiment, one run per GPU.
+# Queue the new models-folder BREVO experiment across 8 GPUs.
 #
-# 5 pretrained checkpoints:
-#   set:  seeds 0, 1, 42
-#   sort: seeds 0, 42
+# 5 pretrained checkpoints x 3 finetuning seeds = 15 BREVO runs.
+# The queue keeps at most one run per GPU active at a time.
 #
 # Usage:
 #   bash run_brevo_models.sh
@@ -16,23 +15,100 @@ PROJECT="${1:-synthetic_playground}"
 LOG_DIR="logs/brevo_models"
 mkdir -p "$LOG_DIR"
 
-SET_SEED0="../models/set_seed0_step10000.pth"
-SET_SEED1="../models/set_seed1_step10000.pth"
-SET_SEED42="../models/set_seed42_step10000.pth"
-SORT_SEED0="../models/sortseed0_step10000.pth"
-SORT_SEED42="../models/sort_seed42.pth"
+GPUS=(0 1 2 3 4 5 6 7)
+RUN_SEEDS=(0 1 2)
 
-echo "Launching 5 BREVO model-folder runs across GPUs 0-4 (project: $PROJECT)..."
+MODEL_NAMES=(set set set sort sort)
+CKPT_IDS=(ckptseed0 ckptseed1 ckptseed42 ckptseed0 ckptseed42)
+CKPT_PATHS=(
+  "../models/set_seed0_step10000.pth"
+  "../models/set_seed1_step10000.pth"
+  "../models/set_seed42_step10000.pth"
+  "../models/sortseed0_step10000.pth"
+  "../models/sort_seed42.pth"
+)
 
-WANDB_RUN_GROUP=set  CUDA_VISIBLE_DEVICES=0 bash run_brevo.sh set  "$SET_SEED0"  0  "$PROJECT" > "$LOG_DIR/brevo_set_seed0.log"  2>&1 &
-WANDB_RUN_GROUP=set  CUDA_VISIBLE_DEVICES=1 bash run_brevo.sh set  "$SET_SEED1"  1  "$PROJECT" > "$LOG_DIR/brevo_set_seed1.log"  2>&1 &
-WANDB_RUN_GROUP=set  CUDA_VISIBLE_DEVICES=2 bash run_brevo.sh set  "$SET_SEED42" 42 "$PROJECT" > "$LOG_DIR/brevo_set_seed42.log" 2>&1 &
+declare -a SLOT_PIDS
+declare -a SLOT_LOGS
+declare -a SLOT_NAMES
 
-WANDB_RUN_GROUP=sort CUDA_VISIBLE_DEVICES=3 bash run_brevo.sh sort "$SORT_SEED0"  0  "$PROJECT" > "$LOG_DIR/brevo_sort_seed0.log"  2>&1 &
-WANDB_RUN_GROUP=sort CUDA_VISIBLE_DEVICES=4 bash run_brevo.sh sort "$SORT_SEED42" 42 "$PROJECT" > "$LOG_DIR/brevo_sort_seed42.log" 2>&1 &
+cleanup() {
+  local pids
+  pids="$(jobs -pr || true)"
+  if [ -n "$pids" ]; then
+    kill $pids 2>/dev/null || true
+  fi
+}
+trap cleanup INT TERM
 
-echo "All 5 BREVO runs launched. Tail logs with:"
-echo "  tail -f $LOG_DIR/*.log"
-echo ""
-wait
-echo "All BREVO model-folder runs complete."
+wait_for_slot() {
+  local slot pid
+  while true; do
+    for slot in "${!GPUS[@]}"; do
+      pid="${SLOT_PIDS[$slot]:-}"
+      if [ -z "$pid" ]; then
+        echo "$slot"
+        return
+      fi
+      if ! kill -0 "$pid" 2>/dev/null; then
+        if ! wait "$pid"; then
+          echo "Run failed: ${SLOT_NAMES[$slot]} (log: ${SLOT_LOGS[$slot]})" >&2
+          exit 1
+        fi
+        unset "SLOT_PIDS[$slot]"
+        echo "$slot"
+        return
+      fi
+    done
+    sleep 10
+  done
+}
+
+launch_run() {
+  local slot="$1"
+  local model="$2"
+  local ckpt_id="$3"
+  local ckpt="$4"
+  local seed="$5"
+  local gpu="${GPUS[$slot]}"
+  local run_name="brevo_${model}_${ckpt_id}_seed${seed}"
+  local log="$LOG_DIR/${run_name}.log"
+
+  echo "GPU $gpu -> $run_name"
+  WANDB_RUN_GROUP="$model" CUDA_VISIBLE_DEVICES="$gpu" \
+    bash run_brevo.sh "$model" "$ckpt" "$seed" "$PROJECT" "$run_name" \
+    > "$log" 2>&1 &
+
+  SLOT_PIDS[$slot]=$!
+  SLOT_LOGS[$slot]="$log"
+  SLOT_NAMES[$slot]="$run_name"
+}
+
+echo "Queueing 15 BREVO runs across ${#GPUS[@]} GPUs (project: $PROJECT)..."
+
+job_count=0
+for model_idx in "${!MODEL_NAMES[@]}"; do
+  for seed in "${RUN_SEEDS[@]}"; do
+    slot="$(wait_for_slot)"
+    launch_run \
+      "$slot" \
+      "${MODEL_NAMES[$model_idx]}" \
+      "${CKPT_IDS[$model_idx]}" \
+      "${CKPT_PATHS[$model_idx]}" \
+      "$seed"
+    job_count=$((job_count + 1))
+  done
+done
+
+echo "Launched $job_count runs. Waiting for remaining jobs..."
+for slot in "${!GPUS[@]}"; do
+  pid="${SLOT_PIDS[$slot]:-}"
+  if [ -n "$pid" ]; then
+    if ! wait "$pid"; then
+      echo "Run failed: ${SLOT_NAMES[$slot]} (log: ${SLOT_LOGS[$slot]})" >&2
+      exit 1
+    fi
+  fi
+done
+
+echo "All BREVO model-folder queued runs complete."
