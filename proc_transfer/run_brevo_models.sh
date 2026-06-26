@@ -2,6 +2,7 @@
 # Queue the new models-folder BREVO experiment across 8 GPUs.
 #
 # 5 pretrained checkpoints x 3 finetuning seeds = 15 BREVO runs.
+# The wandb model identifier is the checkpoint name stem, e.g. set_seed0.
 # The queue keeps at most one run per GPU active at a time.
 #
 # Usage:
@@ -18,8 +19,7 @@ mkdir -p "$LOG_DIR"
 GPUS=(0 1 2 3 4 5 6 7)
 RUN_SEEDS=(0 1 2)
 
-MODEL_NAMES=(set set set sort sort)
-CKPT_IDS=(ckptseed0 ckptseed1 ckptseed42 ckptseed0 ckptseed42)
+MODEL_IDS=(set_seed0 set_seed1 set_seed42 sortseed0 sort_seed42)
 CKPT_PATHS=(
   "../models/set_seed0_step10000.pth"
   "../models/set_seed1_step10000.pth"
@@ -66,17 +66,16 @@ wait_for_slot() {
 
 launch_run() {
   local slot="$1"
-  local model="$2"
-  local ckpt_id="$3"
-  local ckpt="$4"
-  local seed="$5"
+  local model_id="$2"
+  local ckpt="$3"
+  local seed="$4"
   local gpu="${GPUS[$slot]}"
-  local run_name="brevo_${model}_${ckpt_id}_seed${seed}"
+  local run_name="brevo_${model_id}_seed${seed}"
   local log="$LOG_DIR/${run_name}.log"
 
   echo "GPU $gpu -> $run_name"
-  WANDB_RUN_GROUP="$model" CUDA_VISIBLE_DEVICES="$gpu" \
-    bash run_brevo.sh "$model" "$ckpt" "$seed" "$PROJECT" "$run_name" \
+  WANDB_RUN_GROUP="$model_id" CUDA_VISIBLE_DEVICES="$gpu" \
+    bash run_brevo.sh "$model_id" "$ckpt" "$seed" "$PROJECT" "$run_name" \
     > "$log" 2>&1 &
 
   SLOT_PIDS[$slot]=$!
@@ -87,13 +86,12 @@ launch_run() {
 echo "Queueing 15 BREVO runs across ${#GPUS[@]} GPUs (project: $PROJECT)..."
 
 job_count=0
-for model_idx in "${!MODEL_NAMES[@]}"; do
+for model_idx in "${!MODEL_IDS[@]}"; do
   for seed in "${RUN_SEEDS[@]}"; do
     slot="$(wait_for_slot)"
     launch_run \
       "$slot" \
-      "${MODEL_NAMES[$model_idx]}" \
-      "${CKPT_IDS[$model_idx]}" \
+      "${MODEL_IDS[$model_idx]}" \
       "${CKPT_PATHS[$model_idx]}" \
       "$seed"
     job_count=$((job_count + 1))
