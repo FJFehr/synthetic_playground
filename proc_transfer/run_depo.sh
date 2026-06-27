@@ -5,6 +5,7 @@
 #   bash run_depo.sh scratch                           # random init baseline
 #   bash run_depo.sh stack /path/to/ckpt.pth          # pretrained init
 #   bash run_depo.sh stack /path/to/ckpt.pth <seed>   # with explicit seed
+#   bash run_depo.sh stack /path/to/ckpt.pth <seed> <project> <wandb_run_name>
 
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -18,6 +19,7 @@ MODE="${1:-scratch}"
 CKPT="${2:-}"
 SEED="${3:-0}"
 PROJECT="${4:-synthetic_playground}"
+WANDB_RUN_NAME="${5:-}"
 
 # ---------- edit these paths ----------
 SORT_CKPT=""   # e.g. pretrained_models/procedural/4_4_512/10ksteps.../sort/seed0/.../pytorch_model.pth
@@ -33,13 +35,16 @@ if [ -z "$CKPT" ] && [ "$MODE" != "scratch" ]; then
 fi
 
 TAG="${MODE}_seed${SEED}"
+if [ -z "$WANDB_RUN_NAME" ]; then
+  WANDB_RUN_NAME="$TAG"
+fi
 EXTRA=""
 if [ -n "$CKPT" ]; then
   EXTRA="--pretrained_path $CKPT --transfer attn,ffn,ln"
 fi
 
 WANDB_ENTITY=fjfehr python plotting/depo_depth_test.py \
-  --tag         "$TAG" \
+  --tag         "$WANDB_RUN_NAME" \
   --max_hops    4 \
   --num_entities 10 \
   --ood_hops    0 \
@@ -52,7 +57,8 @@ WANDB_ENTITY=fjfehr python plotting/depo_depth_test.py \
   $EXTRA \
   --report_to   wandb \
   --wandb_project "$PROJECT" \
+  --wandb_name  "$WANDB_RUN_NAME" \
   --model_name  "$MODE" \
-  --out_json    "$OUT_DIR/depo_${TAG}.json"
+  --out_json    "$OUT_DIR/${WANDB_RUN_NAME}.json"
 
-echo "Done. Results in $OUT_DIR/depo_${TAG}.json"
+echo "Done. Results in $OUT_DIR/${WANDB_RUN_NAME}.json"
