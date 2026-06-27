@@ -28,9 +28,52 @@ CKPT_PATHS=(
   "../models/sort_seed42.pth"
 )
 
-declare -a SLOT_PIDS
-declare -a SLOT_LOGS
-declare -a SLOT_NAMES
+declare -a JOB_MODEL_IDS
+declare -a JOB_CKPT_PATHS
+declare -a JOB_SEEDS
+declare -a WORKER_PIDS
+
+for model_idx in "${!MODEL_IDS[@]}"; do
+  for seed in "${RUN_SEEDS[@]}"; do
+    JOB_MODEL_IDS+=("${MODEL_IDS[$model_idx]}")
+    JOB_CKPT_PATHS+=("${CKPT_PATHS[$model_idx]}")
+    JOB_SEEDS+=("$seed")
+  done
+done
+
+run_job() {
+  local gpu="$1"
+  local model_id="$2"
+  local ckpt="$3"
+  local seed="$4"
+  local run_name="brevo_${model_id}_seed${seed}"
+  local log="$LOG_DIR/${run_name}.log"
+
+  if [ -f "$log" ] && grep -q "Done. Results appended" "$log"; then
+    echo "Skipping completed run: $run_name"
+    return
+  fi
+
+  echo "GPU $gpu -> $run_name"
+  WANDB_RUN_GROUP="$model_id" CUDA_VISIBLE_DEVICES="$gpu" \
+    bash run_brevo.sh "$model_id" "$ckpt" "$seed" "$PROJECT" "$run_name" \
+    > "$log" 2>&1
+}
+
+worker() {
+  local gpu="$1"
+  local job_idx="$2"
+  local stride="${#GPUS[@]}"
+
+  while [ "$job_idx" -lt "${#JOB_MODEL_IDS[@]}" ]; do
+    run_job \
+      "$gpu" \
+      "${JOB_MODEL_IDS[$job_idx]}" \
+      "${JOB_CKPT_PATHS[$job_idx]}" \
+      "${JOB_SEEDS[$job_idx]}"
+    job_idx=$((job_idx + stride))
+  done
+}
 
 cleanup() {
   local pids
@@ -41,72 +84,16 @@ cleanup() {
 }
 trap cleanup INT TERM
 
-wait_for_slot() {
-  local slot pid
-  while true; do
-    for slot in "${!GPUS[@]}"; do
-      pid="${SLOT_PIDS[$slot]:-}"
-      if [ -z "$pid" ]; then
-        echo "$slot"
-        return
-      fi
-      if ! kill -0 "$pid" 2>/dev/null; then
-        if ! wait "$pid"; then
-          echo "Run failed: ${SLOT_NAMES[$slot]} (log: ${SLOT_LOGS[$slot]})" >&2
-          exit 1
-        fi
-        unset "SLOT_PIDS[$slot]"
-        echo "$slot"
-        return
-      fi
-    done
-    sleep 10
-  done
-}
+echo "Queueing ${#JOB_MODEL_IDS[@]} BREVO runs across ${#GPUS[@]} GPUs (project: $PROJECT)..."
 
-launch_run() {
-  local slot="$1"
-  local model_id="$2"
-  local ckpt="$3"
-  local seed="$4"
-  local gpu="${GPUS[$slot]}"
-  local run_name="brevo_${model_id}_seed${seed}"
-  local log="$LOG_DIR/${run_name}.log"
-
-  echo "GPU $gpu -> $run_name"
-  WANDB_RUN_GROUP="$model_id" CUDA_VISIBLE_DEVICES="$gpu" \
-    bash run_brevo.sh "$model_id" "$ckpt" "$seed" "$PROJECT" "$run_name" \
-    > "$log" 2>&1 &
-
-  SLOT_PIDS[$slot]=$!
-  SLOT_LOGS[$slot]="$log"
-  SLOT_NAMES[$slot]="$run_name"
-}
-
-echo "Queueing 15 BREVO runs across ${#GPUS[@]} GPUs (project: $PROJECT)..."
-
-job_count=0
-for model_idx in "${!MODEL_IDS[@]}"; do
-  for seed in "${RUN_SEEDS[@]}"; do
-    slot="$(wait_for_slot)"
-    launch_run \
-      "$slot" \
-      "${MODEL_IDS[$model_idx]}" \
-      "${CKPT_PATHS[$model_idx]}" \
-      "$seed"
-    job_count=$((job_count + 1))
-  done
-done
-
-echo "Launched $job_count runs. Waiting for remaining jobs..."
 for slot in "${!GPUS[@]}"; do
-  pid="${SLOT_PIDS[$slot]:-}"
-  if [ -n "$pid" ]; then
-    if ! wait "$pid"; then
-      echo "Run failed: ${SLOT_NAMES[$slot]} (log: ${SLOT_LOGS[$slot]})" >&2
-      exit 1
-    fi
+  if [ "$slot" -lt "${#JOB_MODEL_IDS[@]}" ]; then
+    worker "${GPUS[$slot]}" "$slot" &
+    WORKER_PIDS+=("$!")
   fi
 done
 
+for pid in "${WORKER_PIDS[@]}"; do
+  wait "$pid"
+done
 echo "All BREVO model-folder queued runs complete."
